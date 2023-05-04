@@ -1,0 +1,84 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+void main() => runApp(MyApp());
+
+class MyApp extends StatefulWidget {
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  static const String _baseUrl = 'http://192.168.4.1';
+  bool _isButtonDisabled = false;
+  int _buttonCountdown = 0;
+  Timer? _buttonTimer;
+
+  Future<void> _sendRequest(String path) async {
+    setState(() {
+      _isButtonDisabled = true;
+      _buttonCountdown = 3;
+      _buttonTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+        setState(() {
+          _buttonCountdown--;
+        });
+        if (_buttonCountdown == 0) {
+          setState(() {
+            _isButtonDisabled = false;
+          });
+          _buttonTimer?.cancel();
+        }
+      });
+    });
+    final url = Uri.parse('$_baseUrl/$path');
+    try {
+      final response = await http.get(url);
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+    } catch (e) {
+      print('Error sending request: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _buttonTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'My App',
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text('My App'),
+        ),
+        body: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton(
+                onPressed: _isButtonDisabled
+                    ? null
+                    : () => _sendRequest('on'),
+                child: _isButtonDisabled
+                    ? Text('ON ($_buttonCountdown)')
+                    : Text('ON'),
+              ),
+              ElevatedButton(
+                onPressed: _isButtonDisabled
+                    ? null
+                    : () => _sendRequest('off'),
+                child: _isButtonDisabled
+                    ? Text('OFF ($_buttonCountdown)')
+                    : Text('OFF'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
