@@ -1,0 +1,148 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:async';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'my app v0.6.6.5.1',
+      home: MyHomePage(),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  MyHomePage({Key? key}) : super(key: key);
+
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  final urlController = TextEditingController();
+  String url = '';
+  bool _isButtonDisabled = false;
+  String _buttonText = '';
+  Timer? _timer;
+  String consoleMessage = '';
+
+  void _startTimer() {
+    const oneSec = const Duration(seconds: 1);
+    var count = 3;
+    _isButtonDisabled = true;
+    _buttonText = '$_buttonText (${count--})';
+    _timer = new Timer.periodic(
+      oneSec,
+          (Timer timer) {
+        if (count == 0) {
+          setState(() {
+            _isButtonDisabled = false;
+            _buttonText = '';
+          });
+          timer.cancel();
+        } else {
+          setState(() {
+            _buttonText = '$_buttonText (${count--})';
+          });
+        }
+      },
+    );
+  }
+
+  Future<String> _makeHttpRequest(String url) async {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'http://' + url;
+    }
+    Completer<String> completer = Completer<String>();
+    try {
+      var stopwatch = Stopwatch()..start();
+      http.Response response = await http.get(Uri.parse(url));
+      stopwatch.stop();
+      int elapsedTime = stopwatch.elapsedMilliseconds;
+      String consoleMessage = 'Request took $elapsedTime ms\n${response.body}';
+      completer.complete(consoleMessage);
+    } catch (e) {
+      completer.complete('Error: $e');
+    }
+    return completer.future;
+  }
+
+
+  void _sendHttpGetRequest(String buttonPressed) async {
+    String modifiedUrl = url + buttonPressed;
+    String consoleMessage = await _makeHttpRequest(modifiedUrl);
+    setState(() {
+      this.consoleMessage = consoleMessage;
+    });
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('my app v0.6.6.5.1'),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              TextField(
+                controller: urlController,
+                decoration: InputDecoration(
+                  hintText: 'Enter NGROK URL',
+                  border: OutlineInputBorder(),
+                ),
+                textAlign: TextAlign.center,
+                onChanged: (text) {
+                  setState(() {
+                    url = text;
+                  });
+                },
+              ),
+              SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[
+                  ElevatedButton(
+                    onPressed: _isButtonDisabled
+                        ? null
+                        : () {
+                      setState(() {
+                        _buttonText = 'ON';
+                      });
+                      _startTimer();
+                      _sendHttpGetRequest('/ON');
+                    },
+                    child: Text('ON' + _buttonText),
+                  ),
+                  ElevatedButton(
+                    onPressed: _isButtonDisabled
+                        ? null
+                        : () {
+                      setState(() {
+                        _buttonText = 'OFF';
+                      });
+                      _startTimer();
+                      _sendHttpGetRequest('/OFF');
+                    },
+                    child: Text('OFF' + _buttonText),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+              Text(consoleMessage),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
